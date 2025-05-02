@@ -50,6 +50,33 @@ io.on("connection", (socket) => {
     socket.broadcast.to(roomID).emit('message', { userID, message, roomID, messageCopy })
   })
 
+  socket.on('website-closed', ({ roomID, userID }) => {
+    console.log(`User ${userID} closed website sharing in room: ${roomID}`);
+
+    // Broadcast to all users in the room that the website was closed
+    io.to(roomID).emit('website-closed', { userID, roomID });
+  });
+
+
+  socket.on('share-website', ({ websiteUrl, roomID, userID }) => {
+    console.log(`User ${userID} is sharing website: ${websiteUrl} in room: ${roomID}`);
+
+    // Validate URL (additional server-side validation)
+    try {
+      new URL(websiteUrl);
+
+      // Broadcast the website URL to all users in the room except the sender
+      socket.to(roomID).emit('website-shared', { websiteUrl, userID });
+
+      // Also send confirmation back to the sender
+      socket.emit('website-shared', { websiteUrl, userID });
+    } catch (error) {
+      console.error('Invalid URL format on server:', error);
+      // Optionally notify the client about the error
+      socket.emit('website-share-error', { error: 'Invalid URL format' });
+    }
+  });
+
   socket.on("whiteboard-clear", (roomID) => {
     elements = [];
 
@@ -70,7 +97,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on('file', ({ roomID, fileName, fileType, fileData }) => {
-    socket.to(roomID).emit('file-rechieved', ( fileName, fileType, fileData ))
+    socket.to(roomID).emit('file-rechieved', (fileName, fileType, fileData))
   })
 
   socket.on('get-definition', async ({ question, userID }) => {
